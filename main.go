@@ -138,6 +138,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case wsFinishedGameMsg:
 		m.wordBoxGuide = "WAITING ROUND START!"
 		m.wordBox = ""
+
+		return m, listenToWsServer(m.ctx, m.conn)
 	}
 
 	var cmd tea.Cmd
