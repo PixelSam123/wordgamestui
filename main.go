@@ -29,6 +29,7 @@ type wsChatMsg struct{ content string }
 type wsOngoingRoundInfoMsg struct{ content map[string]interface{} }
 type wsFinishedRoundInfoMsg struct{ content map[string]interface{} }
 type wsFinishedGameMsg struct{}
+type wsErrMsg struct{ err error }
 
 type model struct {
 	ctx          context.Context
@@ -86,6 +87,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case successSentMsg:
 		m.textInput.SetValue("")
 		return m, nil
+
+	case wsErrMsg:
+		m.err = msg.err
+		return m, listenToWsServer(m.ctx, m.conn)
 
 	case wsChatMsg:
 		m.chatMessages = append(m.chatMessages, msg.content)
@@ -242,7 +247,7 @@ func listenToWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
 		case "FinishedGame":
 			return wsFinishedGameMsg{}
 		default:
-			return errMsg{fmt.Errorf("unknown message type: %s", v["type"])}
+			return wsErrMsg{fmt.Errorf("unknown message type: %s", v["type"])}
 		}
 	}
 }
