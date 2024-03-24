@@ -147,21 +147,23 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 var headerStyle = lipgloss.NewStyle().
-	Background(lipgloss.Color("15")).
+	Background(lipgloss.Color("26")).
+	Foreground(lipgloss.Color("255")).
 	Width(appWidth).
 	Align(lipgloss.Center).
 	PaddingTop(1)
 var mainStyle = lipgloss.NewStyle().
-	Background(lipgloss.Color("15")).
+	Background(lipgloss.Color("26")).
+	Foreground(lipgloss.Color("255")).
 	Width(appWidth).
 	Align(lipgloss.Center).
 	PaddingBottom(1).
 	Bold(true)
 var messageTopBottomStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.Color("15"))
+	Foreground(lipgloss.Color("68"))
 var messageStyle = lipgloss.NewStyle().
 	Border(lipgloss.RoundedBorder(), false, true).
-	BorderForeground(lipgloss.Color("15")).
+	BorderForeground(lipgloss.Color("68")).
 	Width(appWidth - 2).
 	Height(chatMessagesMax).
 	AlignVertical(lipgloss.Bottom).
