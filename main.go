@@ -66,7 +66,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "enter":
-			return m, sendToWsServer(m.ctx, m.conn, m.textInput.Value())
+			trimmedInput := strings.TrimSpace(m.textInput.Value())
+			if trimmedInput == "" {
+				return m, nil
+			}
+			return m, sendToWsServer(m.ctx, m.conn, trimmedInput)
 		}
 
 	case timer.TickMsg:
