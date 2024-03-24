@@ -44,7 +44,7 @@ type model struct {
 
 func initialModel() model {
 	ti := textinput.New()
-	ti.Placeholder = "message/answer here, send with Enter"
+	ti.Placeholder = "connecting..."
 	ti.Focus()
 	ti.Width = appWidth - 2
 
@@ -67,7 +67,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			trimmedInput := strings.TrimSpace(m.textInput.Value())
-			if trimmedInput == "" {
+			if m.conn == nil || trimmedInput == "" {
 				return m, nil
 			}
 			return m, sendToWsServer(m.ctx, m.conn, trimmedInput)
@@ -80,8 +80,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 
 	case initConnMsg:
+		m.textInput.Placeholder = "message/answer here, send with Enter"
 		m.ctx = msg.ctx
 		m.conn = msg.conn
+
 		return m, listenToWsServer(m.ctx, m.conn)
 
 	case errMsg:
@@ -258,10 +260,6 @@ func listenToWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
 
 func sendToWsServer(ctx context.Context, conn *websocket.Conn, msg string) tea.Cmd {
 	return func() tea.Msg {
-		if conn == nil {
-			return nil
-		}
-
 		err := conn.Write(ctx, websocket.MessageText, []byte(msg))
 		if err != nil {
 			return errMsg{fmt.Errorf("c.Write: %v", err)}
