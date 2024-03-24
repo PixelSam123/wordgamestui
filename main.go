@@ -67,6 +67,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter":
 			trimmedInput := strings.TrimSpace(m.textInput.Value())
+
+			if trimmedInput == "/exit" {
+				return m, tea.Quit
+			}
+
 			if m.conn == nil || trimmedInput == "" {
 				return m, nil
 			}
