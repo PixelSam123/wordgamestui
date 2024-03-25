@@ -56,7 +56,7 @@ func initialModel() model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(textinput.Blink, m.timer.Init(), connectToWsServer)
+	return tea.Batch(tea.ClearScreen, textinput.Blink, m.timer.Init(), connectToWsServer)
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
