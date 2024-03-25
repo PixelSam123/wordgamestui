@@ -29,6 +29,7 @@ type wsChatMsg struct{ content string }
 type wsOngoingRoundInfoMsg struct{ content map[string]interface{} }
 type wsFinishedRoundInfoMsg struct{ content map[string]interface{} }
 type wsFinishedGameMsg struct{}
+type wsPongMsg struct{}
 type wsErrMsg struct{ err error }
 
 type model struct {
@@ -65,6 +66,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "ctrl+c":
 			return m, tea.Quit
 
+		case "ctrl+e":
+			m.err = nil
+			return m, nil
+
 		case "enter":
 			trimmedInput := strings.TrimSpace(m.textInput.Value())
 
@@ -89,7 +94,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.ctx = msg.ctx
 		m.conn = msg.conn
 
-		return m, listenToWsServer(m.ctx, m.conn)
+		return m, tea.Batch(
+			listenToWsServer(m.ctx, m.conn), periodicallyPingWsServer(m.ctx, m.conn),
+		)
 
 	case errMsg:
 		m.err = msg.err
@@ -98,6 +105,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case successSentMsg:
 		m.textInput.SetValue("")
 		return m, nil
+
+	case wsPongMsg:
+		return m, listenToWsServer(m.ctx, m.conn)
 
 	case wsErrMsg:
 		m.err = msg.err
@@ -184,6 +194,11 @@ var messageStyle = lipgloss.NewStyle().
 var errorStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("9")).
 	Width(appWidth)
+var hotkeyStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("8")).
+	Bold(true)
+var hotkeyTooltipStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("8"))
 
 func (m model) View() string {
 	timeout := m.timer.Timeout.Round(100 * time.Millisecond)
@@ -220,7 +235,12 @@ func (m model) View() string {
 		s += "\n"
 	}
 
-	s += "\nPress Ctrl+C to quit\n"
+	s += "\n"
+	s += hotkeyStyle.Render("Ctrl+C")
+	s += hotkeyTooltipStyle.Render(" exit  ")
+	s += hotkeyStyle.Render("Ctrl+E")
+	s += hotkeyTooltipStyle.Render(" clear errors")
+	s += "\n"
 
 	// Send the UI for rendering
 	return s
@@ -261,6 +281,8 @@ func listenToWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
 			return wsFinishedRoundInfoMsg{content}
 		case "FinishedGame":
 			return wsFinishedGameMsg{}
+		case "PongMessage":
+			return wsPongMsg{}
 		default:
 			return wsErrMsg{fmt.Errorf("unknown message type: %s", v["type"])}
 		}
@@ -269,12 +291,31 @@ func listenToWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
 
 func sendToWsServer(ctx context.Context, conn *websocket.Conn, msg string) tea.Cmd {
 	return func() tea.Msg {
+		if msg == "/ping" {
+			return errMsg{fmt.Errorf(
+				"Don't ping manually! This is handled automatically by the client.",
+			)}
+		}
+
 		err := conn.Write(ctx, websocket.MessageText, []byte(msg))
 		if err != nil {
 			return errMsg{fmt.Errorf("c.Write: %v", err)}
 		}
 
 		return successSentMsg{}
+	}
+}
+
+func periodicallyPingWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
+	return func() tea.Msg {
+		for {
+			time.Sleep(10*time.Second)
+
+			err := conn.Write(ctx, websocket.MessageText, []byte("/ping"))
+			if err != nil {
+				return errMsg{fmt.Errorf("c.Write: %v", err)}
+			}
+		}
 	}
 }
 
