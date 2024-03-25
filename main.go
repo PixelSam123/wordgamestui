@@ -266,7 +266,7 @@ func listenToWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
 
 		err := wsjson.Read(ctx, conn, &v)
 		if err != nil {
-			return errMsg{fmt.Errorf("wsjson.Read: %v", err)}
+			return wsErrMsg{fmt.Errorf("wsjson.Read: %v", err)}
 		}
 
 		switch v["type"] {
