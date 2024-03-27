@@ -80,6 +80,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			if trimmedInput == "/clear" {
 				m.chatMessages = []string{}
+				m.textInput.SetValue("")
 			} else if m.conn != nil && trimmedInput != "" {
 				cmds = append(cmds, sendToWsServer(m.ctx, m.conn, trimmedInput))
 			}
