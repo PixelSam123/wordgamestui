@@ -60,6 +60,8 @@ func (m model) Init() tea.Cmd {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
+
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -68,7 +70,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "ctrl+e":
 			m.err = nil
-			return m, nil
 
 		case "enter":
 			trimmedInput := strings.TrimSpace(m.textInput.Value())
@@ -77,41 +78,41 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, tea.Quit
 			}
 
-			if m.conn == nil || trimmedInput == "" {
-				return m, nil
+			if m.conn != nil || trimmedInput != "" {
+				cmds = append(cmds, sendToWsServer(m.ctx, m.conn, trimmedInput))
 			}
-			return m, sendToWsServer(m.ctx, m.conn, trimmedInput)
 		}
 
 	case timer.TickMsg:
 		var cmd tea.Cmd
 
 		m.timer, cmd = m.timer.Update(msg)
-		return m, cmd
+		cmds = append(cmds, cmd)
 
 	case initConnMsg:
 		m.textInput.Placeholder = "message/answer here, send with Enter"
 		m.ctx = msg.ctx
 		m.conn = msg.conn
 
-		return m, tea.Batch(
-			listenToWsServer(m.ctx, m.conn), periodicallyPingWsServer(m.ctx, m.conn),
+		cmds = append(
+			cmds,
+			listenToWsServer(m.ctx, m.conn),
+			periodicallyPingWsServer(m.ctx, m.conn),
 		)
 
 	case errMsg:
 		m.err = msg.err
-		return m, nil
 
 	case successSentMsg:
 		m.textInput.SetValue("")
-		return m, nil
 
 	case wsPongMsg:
-		return m, listenToWsServer(m.ctx, m.conn)
+		cmds = append(cmds, listenToWsServer(m.ctx, m.conn))
 
 	case wsErrMsg:
 		m.err = msg.err
-		return m, listenToWsServer(m.ctx, m.conn)
+
+		cmds = append(cmds, listenToWsServer(m.ctx, m.conn))
 
 	case wsChatMsg:
 		m.chatMessages = append(m.chatMessages, msg.content)
@@ -120,7 +121,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.chatMessages = m.chatMessages[1:]
 		}
 
-		return m, listenToWsServer(m.ctx, m.conn)
+		cmds = append(cmds, listenToWsServer(m.ctx, m.conn))
 
 	case wsOngoingRoundInfoMsg:
 		m.wordBoxGuide = "PLEASE GUESS!"
@@ -134,7 +135,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.timer = timer.NewWithInterval(time.Until(roundFinishTime), 100*time.Millisecond)
 
-		return m, tea.Batch(listenToWsServer(m.ctx, m.conn), m.timer.Init())
+		cmds = append(
+			cmds,
+			listenToWsServer(m.ctx, m.conn),
+			m.timer.Init(),
+		)
 
 	case wsFinishedRoundInfoMsg:
 		m.wordBoxGuide = "TIME'S UP! THE ANSWER:"
@@ -148,19 +153,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		m.timer = timer.NewWithInterval(time.Until(toNextRoundTime), 100*time.Millisecond)
 
-		return m, tea.Batch(listenToWsServer(m.ctx, m.conn), m.timer.Init())
+		cmds = append(
+			cmds,
+			listenToWsServer(m.ctx, m.conn),
+			m.timer.Init(),
+		)
 
 	case wsFinishedGameMsg:
 		m.wordBoxGuide = "WAITING ROUND START!"
 		m.wordBox = ""
 
-		return m, listenToWsServer(m.ctx, m.conn)
+		cmds = append(cmds, listenToWsServer(m.ctx, m.conn))
 	}
 
 	var cmd tea.Cmd
 
 	m.textInput, cmd = m.textInput.Update(msg)
-	return m, cmd
+	cmds = append(cmds, cmd)
+
+	return m, tea.Batch(cmds...)
 }
 
 var headerStyle = lipgloss.NewStyle().
