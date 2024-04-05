@@ -263,7 +263,16 @@ func (m model) View() string {
 func connectToWsServer() tea.Msg {
 	ctx := context.Background()
 
-	conn, _, err := websocket.Dial(ctx, "wss://wordgames4j.azurewebsites.net/ws/anagram/1", nil)
+	fmt.Println(os.Args[1])
+
+	var link string
+	if len(os.Args) < 2 {
+		link = "wss://wordgames4j.azurewebsites.net/ws/anagram/1"
+	} else {
+		link = os.Args[1]
+	}
+
+	conn, _, err := websocket.Dial(ctx, link, nil)
 	if err != nil {
 		return errMsg{fmt.Errorf("websocket.Dial: %v", err)}
 	}
