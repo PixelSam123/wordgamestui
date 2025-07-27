@@ -11,8 +11,8 @@ import (
 	"github.com/charmbracelet/bubbles/timer"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"nhooyr.io/websocket"
-	"nhooyr.io/websocket/wsjson"
+	"github.com/coder/websocket"
+	"github.com/coder/websocket/wsjson"
 )
 
 const appWidth = 56
@@ -26,8 +26,8 @@ type successSentMsg struct{}
 type errMsg struct{ err error }
 
 type wsChatMsg struct{ content string }
-type wsOngoingRoundInfoMsg struct{ content map[string]interface{} }
-type wsFinishedRoundInfoMsg struct{ content map[string]interface{} }
+type wsOngoingRoundInfoMsg struct{ content map[string]any }
+type wsFinishedRoundInfoMsg struct{ content map[string]any }
 type wsFinishedGameMsg struct{}
 type wsPongMsg struct{}
 type wsErrMsg struct{ err error }
@@ -263,11 +263,9 @@ func (m model) View() string {
 func connectToWsServer() tea.Msg {
 	ctx := context.Background()
 
-	fmt.Println(os.Args[1])
-
 	var link string
 	if len(os.Args) < 2 {
-		link = "wss://wordgames4j.azurewebsites.net/ws/anagram/1"
+		link = "wss://mc.chenk.my.id:3000/ws/anagram/1"
 	} else {
 		link = os.Args[1]
 	}
@@ -297,10 +295,10 @@ func listenToWsServer(ctx context.Context, conn *websocket.Conn) tea.Cmd {
 			content := v["content"].(string)
 			return wsChatMsg{content}
 		case "OngoingRoundInfo":
-			content := v["content"].(map[string]interface{})
+			content := v["content"].(map[string]any)
 			return wsOngoingRoundInfoMsg{content}
 		case "FinishedRoundInfo":
-			content := v["content"].(map[string]interface{})
+			content := v["content"].(map[string]any)
 			return wsFinishedRoundInfoMsg{content}
 		case "FinishedGame":
 			return wsFinishedGameMsg{}
@@ -316,7 +314,7 @@ func sendToWsServer(ctx context.Context, conn *websocket.Conn, msg string) tea.C
 	return func() tea.Msg {
 		if msg == "/ping" {
 			return errMsg{fmt.Errorf(
-				"Don't ping manually! This is handled automatically by the client.",
+				"don't ping manually! this is handled automatically by the client",
 			)}
 		}
 
